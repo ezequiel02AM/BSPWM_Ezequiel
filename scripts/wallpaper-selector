@@ -1,0 +1,64 @@
+#!/usr/bin/bash
+
+
+FILE=`zenity --file-selection --title="Select a File"`
+
+case $? in
+       0)
+            echo "\"$FILE\" selected.";;
+       1)
+            echo "No file selected.";;
+       -1)
+            echo "An unexpected error has occurred.";;
+esac
+
+killall xwinwrap > /dev/null 2>&1
+video-wallpaper.sh --stop
+
+# Kill unnecessary processes
+scripts=`ps -ef | grep -v "grep" | grep ".config/polybar/.*/scripts/.*" | awk -vpid=$$ '$2 != pid { print $2 }'`
+for d in $scripts
+do
+    kill -9 $d
+    wait
+done
+
+colorblocks=`ps -efww | grep -v "grep" | grep "\--colorblocks" | awk -vpid=$$ '$2 != pid { print $2 }'`
+for d in $colorblocks
+do
+    echo "[-] The colorblocks theme $d is still running, killing it"
+    kill -9 $d
+    wait
+done
+trans=`ps -efww | grep -v "grep" | grep "\--trans" | awk -vpid=$$ '$2 != pid { print $2 }'`
+for d in $trans
+do
+    echo "[-] The trans theme $d is still running, killing it"
+    kill -9 $d
+    wait
+done
+
+if [[ ! -z $(ps -efww | grep -vE "grep|launch.sh|scripts" | grep "colorblocks" | awk -vpid=$$ '$2 != pid { print $2 }') ]]; then
+    bash ~/.config/polybar/colorblocks/scripts/pywal.sh $FILE
+    #wait $!
+    #/usr/bin/bash ~/.config/polybar/launch.sh --colorblocks &
+    #wait $!
+elif [[ ! -z $(ps -efww | grep -vE "grep|launch.sh|scripts" | grep "trans" | awk -vpid=$$ '$2 != pid { print $2 }') ]]; then
+    bash ~/.config/polybar/trans/scripts/pywal.sh $FILE
+    #wait $!
+    #/usr/bin/bash ~/.config/polybar/launch.sh --trans & 
+    #wait $!
+else
+    echo "[-] A polybar theme is not running"
+    exit
+fi
+
+
+# Picom Configuration
+if ! pgrep -x "picom" > /dev/null
+then
+    picom --config ~/.config/picom/picom.conf -b
+fi
+
+# Compton Configuration
+#compton --config ~/.config/compton/compton.conf &
